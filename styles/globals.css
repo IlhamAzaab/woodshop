@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    @apply bg-arabesque text-qasr-beige antialiased;
+  }
+}
+
+@layer components {
+  .wrapper {
+    @apply mx-auto w-[min(1200px,calc(100%-1.5rem))] md:w-[min(1200px,calc(100%-2.5rem))];
+  }
+
+  .luxe-panel {
+    @apply rounded-3xl border border-white/10 bg-white/5 shadow-luxe backdrop-blur-md;
+  }
+
+  .gold-button {
+    @apply inline-flex items-center justify-center rounded-full bg-qasr-gold px-6 py-3 font-semibold text-qasr-night transition duration-300 hover:bg-[#e2b877] hover:shadow-lg;
+  }
+
+  .ghost-button {
+    @apply inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3 font-semibold text-qasr-beige transition duration-300 hover:border-qasr-gold/70 hover:text-qasr-gold hover:shadow-lg;
+  }
+}
