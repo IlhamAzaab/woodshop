@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { Check, Sparkles, Truck } from 'lucide-react'
 import CategoryCard from '../components/CategoryCard'
