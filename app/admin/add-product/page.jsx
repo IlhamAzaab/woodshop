@@ -1,37 +1,83 @@
 'use client'
 
-import { useState } from 'react'
-import { Upload, X, Loader2, CheckCircle, Package, Layers, Wrench } from 'lucide-react'
-
-const categories = ['Cupboard', 'Table', 'Door', 'Window', 'Partition', 'Arabic Majlis', 'Other']
+import { useState, useEffect } from 'react'
+import { Upload, X, Loader2, CheckCircle, Package, Plus, Minus } from 'lucide-react'
 
 export default function AdminAddProduct() {
   const [name, setName] = useState('')
-  const [category, setCategory] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [description, setDescription] = useState('')
   const [images, setImages] = useState([])
   const [uploading, setUploading] = useState(false)
 
-  const [boardDetails, setBoardDetails] = useState('')
-  const [boardSize, setBoardSize] = useState('')
-  const [boardCost, setBoardCost] = useState('')
-  const [glassDetails, setGlassDetails] = useState('')
-  const [glassSize, setGlassSize] = useState('')
-  const [glassCost, setGlassCost] = useState('')
-  const [aluminumDetails, setAluminumDetails] = useState('')
-  const [aluminumCost, setAluminumCost] = useState('')
-  const [otherCost, setOtherCost] = useState('')
+  // Categories
+  const [categories, setCategories] = useState([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [newCategory, setNewCategory] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [showAddCategory, setShowAddCategory] = useState(false)
+
+  // Size variants
+  const [sizes, setSizes] = useState([{ size: '', price: '', stock: '' }])
 
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
-  const totalCost =
-    (Number(boardCost) || 0) +
-    (Number(glassCost) || 0) +
-    (Number(aluminumCost) || 0) +
-    (Number(otherCost) || 0)
+  // Load categories
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((r) => r.json())
+      .then((d) => setCategories(d.categories || []))
+      .catch(() => {})
+      .finally(() => setLoadingCategories(false))
+  }, [])
 
+  // Add a new category
+  async function handleAddCategory() {
+    if (!newCategory.trim()) return
+    setAddingCategory(true)
+
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCategory.trim() }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        const cat = data.category
+        setCategories((prev) => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name)))
+        setCategoryId(cat.id)
+        setNewCategory('')
+        setShowAddCategory(false)
+      } else {
+        setError(data.message || 'Failed to add category')
+      }
+    } catch {
+      setError('Failed to add category')
+    }
+
+    setAddingCategory(false)
+  }
+
+  // Size management
+  function addSize() {
+    setSizes((prev) => [...prev, { size: '', price: '', stock: '' }])
+  }
+
+  function removeSize(index) {
+    if (sizes.length <= 1) return
+    setSizes((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function updateSize(index, field, value) {
+    setSizes((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
+    )
+  }
+
+  // Image upload
   async function handleImageUpload(e) {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
@@ -63,14 +109,23 @@ export default function AdminAddProduct() {
     setImages((prev) => prev.filter((_, i) => i !== index))
   }
 
+  // Submit product
   async function handleSubmit(e) {
     e.preventDefault()
     setSubmitting(true)
     setError('')
     setSuccess(false)
 
-    if (!name.trim() || !category) {
+    if (!name.trim() || !categoryId) {
       setError('Product name and category are required.')
+      setSubmitting(false)
+      return
+    }
+
+    // Validate sizes
+    const validSizes = sizes.filter((s) => s.size.trim() && s.price)
+    if (validSizes.length === 0) {
+      setError('At least one size with a price is required.')
       setSubmitting(false)
       return
     }
@@ -81,36 +136,24 @@ export default function AdminAddProduct() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          category,
+          category_id: categoryId,
           description: description.trim(),
-          images,
-          board_details: boardDetails,
-          board_size: boardSize,
-          board_cost: Number(boardCost) || 0,
-          glass_details: glassDetails,
-          glass_size: glassSize,
-          glass_cost: Number(glassCost) || 0,
-          aluminum_details: aluminumDetails,
-          aluminum_cost: Number(aluminumCost) || 0,
-          other_cost: Number(otherCost) || 0,
+          image_urls: images,
+          sizes: validSizes.map((s) => ({
+            size: s.size.trim(),
+            price: Number(s.price) || 0,
+            stock: isNoStock ? 0 : (Number(s.stock) || 0),
+          })),
         }),
       })
 
       if (res.ok) {
         setSuccess(true)
         setName('')
-        setCategory('')
+        setCategoryId('')
         setDescription('')
         setImages([])
-        setBoardDetails('')
-        setBoardSize('')
-        setBoardCost('')
-        setGlassDetails('')
-        setGlassSize('')
-        setGlassCost('')
-        setAluminumDetails('')
-        setAluminumCost('')
-        setOtherCost('')
+        setSizes([{ size: '', price: '', stock: '' }])
       } else {
         const data = await res.json()
         setError(data.message || 'Failed to create product')
@@ -122,6 +165,9 @@ export default function AdminAddProduct() {
     setSubmitting(false)
   }
 
+  const selectedCategoryName = categories.find((c) => c.id === categoryId)?.name || ''
+  const isNoStock = selectedCategoryName === 'Boards' || selectedCategoryName === 'Aluminium'
+
   const inputClass =
     'w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-qasr-beige/50 focus:border-qasr-gold/60 transition'
 
@@ -131,7 +177,8 @@ export default function AdminAddProduct() {
         <p className="text-xs uppercase tracking-[0.3em] text-qasr-gold">Add Product</p>
         <h1 className="mt-3 font-display text-4xl text-white">Create a New Product</h1>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-qasr-beige/75">
-          Add product details, upload photos, and specify material costs. The manager will review and set the final price.
+          Add product details, upload photos, and specify available sizes with prices. The manager
+          will review and set the final price.
         </p>
       </div>
 
@@ -163,17 +210,62 @@ export default function AdminAddProduct() {
               onChange={(e) => setName(e.target.value)}
               required
             />
-            <select
-              className={`${inputClass} ${!category ? 'text-qasr-beige/50' : ''}`}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              required
-            >
-              <option value="" disabled>Select category *</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat} className="bg-qasr-night">{cat}</option>
-              ))}
-            </select>
+
+            <div className="flex gap-2">
+              {showAddCategory ? (
+                <div className="flex flex-1 gap-2">
+                  <input
+                    className={inputClass}
+                    placeholder="New category name"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    disabled={addingCategory}
+                    className="shrink-0 rounded-2xl bg-qasr-gold px-4 py-3 text-xs font-semibold text-qasr-night transition hover:bg-[#e2b877] disabled:opacity-50"
+                  >
+                    {addingCategory ? <Loader2 size={14} className="animate-spin" /> : 'Add'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCategory(false)}
+                    className="shrink-0 rounded-2xl border border-white/10 px-3 py-3 text-xs text-qasr-beige/60 hover:bg-white/5"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-1 gap-2">
+                  <select
+                    className={`flex-1 ${inputClass} ${!categoryId ? 'text-qasr-beige/50' : ''}`}
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    required
+                    disabled={loadingCategories}
+                  >
+                    <option value="" disabled>
+                      {loadingCategories ? 'Loading categories...' : 'Select category *'}
+                    </option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id} className="bg-qasr-night">
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCategory(true)}
+                    className="shrink-0 rounded-2xl border border-dashed border-qasr-gold/40 px-3 py-3 text-xs text-qasr-gold transition hover:border-qasr-gold hover:bg-qasr-gold/10"
+                    title="Add new category"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <textarea
               className={`${inputClass} min-h-24 md:col-span-2`}
               placeholder="Description (optional)"
@@ -192,7 +284,10 @@ export default function AdminAddProduct() {
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {images.map((url, i) => (
-              <div key={i} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10">
+              <div
+                key={i}
+                className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10"
+              >
                 <img src={url} alt="" className="h-full w-full object-cover" />
                 <button
                   type="button"
@@ -225,62 +320,75 @@ export default function AdminAddProduct() {
           </div>
         </div>
 
-        {/* Materials */}
+        {/* Size Variants */}
         <div className="luxe-panel p-6">
-          <div className="mb-5 flex items-center gap-2 text-qasr-gold">
-            <Layers size={18} />
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em]">Materials & Costs</h2>
+          <div className="mb-5 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-qasr-gold">
+              <Package size={18} />
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em]">
+                Available Sizes & Pricing
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={addSize}
+              className="flex items-center gap-1.5 rounded-xl border border-qasr-gold/30 bg-qasr-gold/10 px-3 py-1.5 text-xs font-medium text-qasr-gold transition hover:bg-qasr-gold/20"
+            >
+              <Plus size={14} />
+              Add Size
+            </button>
           </div>
 
-          <div className="space-y-5">
-            {/* Board */}
-            <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-qasr-beige/60">
-                🪵 Board
-              </p>
-              <div className="grid gap-3 md:grid-cols-3">
-                <input className={inputClass} placeholder="Board details" value={boardDetails} onChange={(e) => setBoardDetails(e.target.value)} />
-                <input className={inputClass} placeholder="Size (e.g. 8×4 feet)" value={boardSize} onChange={(e) => setBoardSize(e.target.value)} />
-                <input className={inputClass} type="number" min="0" placeholder="Cost (₹)" value={boardCost} onChange={(e) => setBoardCost(e.target.value)} />
+          <div className="space-y-3">
+            {sizes.map((sizeItem, index) => (
+              <div
+                key={index}
+                className="rounded-2xl border border-white/8 bg-white/3 p-4"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-qasr-beige/60">
+                    Size Variant {index + 1}
+                  </p>
+                  {sizes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeSize(index)}
+                      className="rounded-lg border border-red-500/20 p-1 text-red-400/60 transition hover:bg-red-500/10 hover:text-red-400"
+                    >
+                      <Minus size={14} />
+                    </button>
+                  )}
+                </div>
+                <div className={`grid gap-3 ${isNoStock ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+                  <input
+                    className={inputClass}
+                    placeholder="Size (e.g. 6×4 ft, Large, Standard) *"
+                    value={sizeItem.size}
+                    onChange={(e) => updateSize(index, 'size', e.target.value)}
+                    required
+                  />
+                  <input
+                    className={inputClass}
+                    type="number"
+                    min="0"
+                    placeholder="Price (₹) *"
+                    value={sizeItem.price}
+                    onChange={(e) => updateSize(index, 'price', e.target.value)}
+                    required
+                  />
+                  {!isNoStock && (
+                    <input
+                      className={inputClass}
+                      type="number"
+                      min="0"
+                      placeholder="Stock quantity"
+                      value={sizeItem.stock}
+                      onChange={(e) => updateSize(index, 'stock', e.target.value)}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Glass */}
-            <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-qasr-beige/60">
-                🪟 Glass
-              </p>
-              <div className="grid gap-3 md:grid-cols-3">
-                <input className={inputClass} placeholder="Glass details" value={glassDetails} onChange={(e) => setGlassDetails(e.target.value)} />
-                <input className={inputClass} placeholder="Size (e.g. 4×3 feet)" value={glassSize} onChange={(e) => setGlassSize(e.target.value)} />
-                <input className={inputClass} type="number" min="0" placeholder="Cost (₹)" value={glassCost} onChange={(e) => setGlassCost(e.target.value)} />
-              </div>
-            </div>
-
-            {/* Aluminum */}
-            <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-qasr-beige/60">
-                🔩 Aluminum Fitting
-              </p>
-              <div className="grid gap-3 md:grid-cols-2">
-                <input className={inputClass} placeholder="Aluminum details" value={aluminumDetails} onChange={(e) => setAluminumDetails(e.target.value)} />
-                <input className={inputClass} type="number" min="0" placeholder="Cost (₹)" value={aluminumCost} onChange={(e) => setAluminumCost(e.target.value)} />
-              </div>
-            </div>
-
-            {/* Other */}
-            <div className="rounded-2xl border border-white/8 bg-white/3 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-qasr-beige/60">
-                📦 Other Costs
-              </p>
-              <input className={`${inputClass} md:w-1/3`} type="number" min="0" placeholder="Other cost (₹)" value={otherCost} onChange={(e) => setOtherCost(e.target.value)} />
-            </div>
-
-            {/* Total */}
-            <div className="flex items-center justify-between rounded-2xl border border-qasr-gold/20 bg-qasr-gold/5 px-5 py-4">
-              <span className="text-sm font-semibold uppercase tracking-[0.2em] text-qasr-gold">Total Material Cost</span>
-              <span className="font-display text-2xl text-white">₹{totalCost.toLocaleString('en-IN')}</span>
-            </div>
+            ))}
           </div>
         </div>
 

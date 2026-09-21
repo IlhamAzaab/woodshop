@@ -17,9 +17,16 @@ export async function GET(req) {
 export async function POST(req) {
   const body = await req.json().catch(() => null)
 
-  if (!body?.name || !body?.category) {
+  if (!body?.name || !body?.category_id) {
     return NextResponse.json(
       { message: 'Product name and category are required.' },
+      { status: 400 }
+    )
+  }
+
+  if (!body?.sizes || !Array.isArray(body.sizes) || body.sizes.length === 0) {
+    return NextResponse.json(
+      { message: 'At least one size variant is required.' },
       { status: 400 }
     )
   }

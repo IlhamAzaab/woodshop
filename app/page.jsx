@@ -2,18 +2,20 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { Check, Sparkles, Truck } from 'lucide-react'
-import CategoryCard from '../components/CategoryCard'
 import Hero from '../components/Hero'
 import ProductCard from '../components/ProductCard'
 import SectionTitle from '../components/SectionTitle'
 import TestimonialCard from '../components/TestimonialCard'
 import { getApprovedProducts } from '../lib/supabase'
-import { testimonials, whyChoose, categories } from '../lib/products'
+import { getCategories } from '../lib/supabase'
+import { testimonials, whyChoose } from '../lib/products'
+import CategoryCard from '../components/CategoryCard'
 
 const featureIcons = [Sparkles, Check, Sparkles, Truck, Check]
 
 export default async function Page() {
   const products = await getApprovedProducts()
+  const categories = await getCategories()
 
   return (
     <main className="pb-4">
@@ -42,7 +44,7 @@ export default async function Page() {
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => (
-            <CategoryCard key={category} title={category} />
+            <CategoryCard key={category.id} title={category.name} />
           ))}
         </div>
       </section>

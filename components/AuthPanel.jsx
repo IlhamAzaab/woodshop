@@ -51,7 +51,7 @@ export default function AuthPanel({ role, title, subtitle }) {
       return
     }
 
-    router.replace(getLoginRedirect(role))
+    window.location.href = getLoginRedirect(role)
   }
 
   return (

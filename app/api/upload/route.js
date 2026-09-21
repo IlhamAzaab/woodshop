@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { uploadImage } from '../../../lib/supabase'
+import { uploadImageToCloudinary } from '../../../lib/cloudinary'
 
 export async function POST(req) {
   try {
@@ -11,7 +11,7 @@ export async function POST(req) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const url = await uploadImage(buffer, file.name, file.type)
+    const url = await uploadImageToCloudinary(buffer, file.name)
 
     return NextResponse.json({ url })
   } catch (error) {

@@ -1,63 +1,62 @@
 import { NextResponse } from 'next/server'
-import { getSales, createSale } from '../../../lib/supabase'
-import { getSessionProfile } from '../../../lib/auth-server'
+import { getServiceRoleClient } from '../../../lib/supabase'
 
-export async function GET(req) {
+export async function GET(request) {
   try {
-    const { searchParams } = new URL(req.url)
-    const filterByUser = searchParams.get('my') === 'true'
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    
+    const supabase = getServiceRoleClient()
+    
+    let query = supabase
+      .from('sales')
+      .select(`
+        *,
+        product:products(name, image_urls, category:categories(name)),
+        size:product_sizes(size, stock)
+      `)
+      .order('created_at', { ascending: false })
 
-    let userId = null
-    if (filterByUser) {
-      const { user } = await getSessionProfile()
-      userId = user?.id || null
+    if (status) {
+      query = query.eq('status', status)
     }
 
-    const sales = await getSales(userId)
+    const { data: sales, error } = await query
+
+    if (error) throw error
+
     return NextResponse.json({ sales })
-  } catch (error) {
-    return NextResponse.json(
-      { message: error.message || 'Failed to fetch sales.' },
-      { status: 500 }
-    )
+  } catch (err) {
+    console.error('Failed to fetch sales:', err)
+    return NextResponse.json({ error: 'Failed to fetch sales', details: err.message }, { status: 500 })
   }
 }
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const { user } = await getSessionProfile()
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Unauthorized. Please log in.' },
-        { status: 401 }
-      )
+    const { product_id, size_id, quantity, price } = await request.json()
+
+    if (!quantity || quantity <= 0) {
+      return NextResponse.json({ error: 'Invalid quantity' }, { status: 400 })
     }
 
-    const body = await req.json().catch(() => null)
-    const { product_id, quantity, sold_price } = body || {}
+    const supabase = getServiceRoleClient()
 
-    if (!product_id || !quantity || !sold_price) {
-      return NextResponse.json(
-        { message: 'Product, quantity, and sold price are required.' },
-        { status: 400 }
-      )
-    }
+    const { error } = await supabase
+      .from('sales')
+      .insert({
+        product_id,
+        size_id,
+        quantity,
+        admin_price: price,
+        final_price: price,
+      })
 
-    await createSale({
-      product_id,
-      quantity: Number(quantity),
-      sold_price: Number(sold_price),
-      created_by: user.id,
-    })
+    if (error) throw error
 
-    return NextResponse.json(
-      { message: 'Sale registered and sent to Manager for approval.' },
-      { status: 201 }
-    )
-  } catch (error) {
-    return NextResponse.json(
-      { message: error.message || 'Failed to register sale.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('Sale log error:', err)
+    return NextResponse.json({ error: 'Failed to record sale' }, { status: 500 })
   }
 }

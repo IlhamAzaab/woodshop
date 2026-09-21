@@ -64,34 +64,50 @@ export default function AdminDashboard() {
 
           <div className="luxe-panel p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-qasr-gold">Recent Products</h2>
-              <Link href="/admin/add-product" className="flex items-center gap-2 text-xs text-qasr-gold hover:text-qasr-beige transition">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-qasr-gold">
+                Recent Products
+              </h2>
+              <Link
+                href="/admin/add-product"
+                className="flex items-center gap-2 text-xs text-qasr-gold hover:text-qasr-beige transition"
+              >
                 <PackagePlus size={14} /> Add New
               </Link>
             </div>
 
             {recent.length === 0 ? (
-              <p className="py-8 text-center text-sm text-qasr-beige/50">No products yet. Start by adding one!</p>
+              <p className="py-8 text-center text-sm text-qasr-beige/50">
+                No products yet. Start by adding one!
+              </p>
             ) : (
               <div className="space-y-3">
                 {recent.map((p) => (
-                  <div key={p.id} className="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/3 px-4 py-3">
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/3 px-4 py-3"
+                  >
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                      {p.images?.[0] ? (
-                        <img src={p.images[0]} alt="" className="h-full w-full object-cover" />
+                      {p.image_urls?.[0] ? (
+                        <img src={p.image_urls[0]} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center"><Package size={14} className="text-qasr-beige/30" /></div>
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Package size={14} className="text-qasr-beige/30" />
+                        </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-white">{p.name}</p>
-                      <p className="text-xs text-qasr-beige/50">{p.category}</p>
+                      <p className="text-xs text-qasr-beige/50">{p.category_name}</p>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
-                      p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' :
-                      p.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                      'bg-yellow-500/20 text-yellow-400'
-                    }`}>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
+                        p.status === 'approved'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : p.status === 'rejected'
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-yellow-500/20 text-yellow-400'
+                      }`}
+                    >
                       {p.status}
                     </span>
                   </div>
